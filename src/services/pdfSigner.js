@@ -50,8 +50,10 @@ class PDFSigner {
 
       // 2. Criar signer com o certificado PFX diretamente
       const certBuffer = fs.readFileSync(certificateFile);
-      const signer = new P12Signer(certBuffer);
-
+      const signer = new P12Signer(certBuffer, {
+        passphrase: certificatePassword,
+      });
+      
       // 3. Assinar o PDF
       const signedPdf = await signpdf.sign(pdfWithPlaceholder, signer);
 
