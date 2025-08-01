@@ -1,0 +1,67 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diretórios comuns de dependências
+node_modules/
+
+# Diretório de build/output
+dist/
+build/
+out/
+
+# Cache de pacotes
+.npm/
+.yarn/
+.pnpm-store/
+
+# Diretórios temporários
+# tmp/
+# temp/
+# *.tmp
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de lock (dependendo do gerenciador de pacotes, mantenha só o que usa)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Configurações locais do ambiente
+.env
+.env.*.local
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Coverage de testes
+coverage/
+.nyc_output/
+
+# Relatórios de lint
+eslint-report.*
+
+# Arquivos específicos de CI/CD (opcional)
+*.tgz
+*.gz
+
+# Outros
+*.swp
+*.swo
