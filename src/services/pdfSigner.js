@@ -1,10 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const { PDFDocument, rgb } = require('pdf-lib');
 const signpdf = require('@signpdf/signpdf').default;
 const { P12Signer } = require('@signpdf/signer-p12');
-const { addPlaceholder } = require('@signpdf/placeholder-pdf-lib');
+const { pdflibAddPlaceholder } = require('@signpdf/placeholder-pdf-lib');
 const CertificateManager = require('../config/certificate');
 
 class PDFSigner {
@@ -26,43 +25,92 @@ class PDFSigner {
    * @param {Object} options - Opções de assinatura
    * @returns {Buffer} - Buffer do PDF assinado
    */
-  async signPDF(pdfBuffer, options = {}) {
-    const {
-      certificateFile,
-      certificatePassword,
-      reason = 'Assinatura Digital ICP-Brasil',
-      location = 'Brasil',
-      contactInfo = '',
-      signatureField = 'Signature1'
-    } = options;
+  // async signPDF(pdfBuffer, options = {}) {
+  //   const {
+  //     certificateFile,
+  //     certificatePassword,
+  //     reason = 'Assinatura Digital ICP-Brasil',
+  //     location = 'Brasil',
+  //     contactInfo = '',
+  //     signatureField = 'Signature1'
+  //   } = options;
 
-    try {
-      // 1. Adicionar placeholder para assinatura
-      const { plainAddPlaceholder } = require('@signpdf/placeholder-plain');
-      const pdfWithPlaceholder = plainAddPlaceholder({
-        pdfBuffer: pdfBuffer,
-        reason,
-        location,
-        contactInfo,
-        signatureLength: 8192,
-        signatureField
-      });
+  //   try {
+  //     // 1. Adicionar placeholder para assinatura
+     
+  //     const pdfWithPlaceholder = plainAddPlaceholder({
+  //       pdfBuffer: pdfBuffer,
+  //       reason,
+  //       location,
+  //       contactInfo,
+  //       signatureLength: 8192,
+  //       signatureField
+  //     });
 
-      // 2. Criar signer com o certificado PFX diretamente
-      const certBuffer = fs.readFileSync(certificateFile);
-      const signer = new P12Signer(certBuffer, {
-        passphrase: certificatePassword,
-      });
+  //     // 2. Criar signer com o certificado PFX diretamente
+  //     const certBuffer = fs.readFileSync(certificateFile);
+  //     const signer = new P12Signer(certBuffer, {
+  //       passphrase: certificatePassword,
+  //     });
       
-      // 3. Assinar o PDF
-      const signedPdf = await signpdf.sign(pdfWithPlaceholder, signer);
+  //     // 3. Assinar o PDF
+  //     const signedPdf = await signpdf.sign(pdfWithPlaceholder, signer);
 
-      return signedPdf;
+  //     return signedPdf;
 
-    } catch (error) {
-      throw new Error(`Erro na assinatura do PDF: ${error.message}`);
+  //   } catch (error) {
+  //     throw new Error(`Erro na assinatura do PDF: ${error.message}`);
+  //   }
+  // }
+
+   async signPDF(pdfBuffer, options = {}) {
+        const {
+            certificateFile,
+            certificatePassword,
+            reason = 'Assinatura Digital ICP-Brasil',
+            location = 'Brasil',
+            contactInfo = '',
+            signatureField = 'Signature1',
+            position = { x: 50, y: 50, width: 200, height: 50 }
+        } = options;
+
+        try {
+            // Passo 1: Prepara o PDF com a representação visual e salva o resultado
+            const preparedPdfBuffer = await this.preparePDFForSignature(pdfBuffer, position);
+
+            // Passo 2: Carrega o PDF preparado para adicionar o placeholder da assinatura
+            const pdfDoc = await PDFDocument.load(preparedPdfBuffer);
+
+            // Passo 3: Usa pdflibAddPlaceholder para adicionar o campo de assinatura invisível
+            // A função pdflibAddPlaceholder adiciona o campo invisível que será assinado
+            await pdflibAddPlaceholder({
+                pdfDoc,
+                reason,
+                location,
+                contactInfo,
+                signatureLength: 8192,
+                name: signatureField
+            });
+
+            // Passo 4: Salva o PDF modificado (com o campo invisível) como um Buffer
+            const pdfWithPlaceholderBuffer = await pdfDoc.save();
+
+            // Passo 5: Cria o signer com o certificado PFX
+            const certBuffer = fs.readFileSync(certificateFile);
+            const signer = new P12Signer(certBuffer, {
+                passphrase: certificatePassword,
+            });
+
+            // Passo 6: Assina o PDF (agora, com o tipo de dado correto)
+            const signedPdf = await signpdf.sign(Buffer.from(pdfWithPlaceholderBuffer), signer);
+
+            return signedPdf;
+
+        } catch (error) {
+            console.error(error);
+            throw new Error(`Erro na assinatura do PDF: ${error.message}`);
+        }
     }
-  }
 
   /**
    * Valida o certificado digital
@@ -101,44 +149,80 @@ class PDFSigner {
    * @param {Object} position - Posição da assinatura
    * @returns {Buffer} - Buffer do PDF preparado
    */
-  async preparePDFForSignature(pdfBuffer, position) {
-    try {
-      const pdfDoc = await PDFDocument.load(pdfBuffer);
-      const pages = pdfDoc.getPages();
+  // async preparePDFForSignature(pdfBuffer, position) {
+  //   try {
+  //     const pdfDoc = await PDFDocument.load(pdfBuffer);
+  //     const pages = pdfDoc.getPages();
       
-      if (pages.length === 0) {
-        throw new Error('PDF não possui páginas');
-      }
+  //     if (pages.length === 0) {
+  //       throw new Error('PDF não possui páginas');
+  //     }
 
-      const firstPage = pages[0];
-      const { width, height } = firstPage.getSize();
+  //     const firstPage = pages[0];
+  //     const { width, height } = firstPage.getSize();
+
+  //     // Adicionar texto indicativo de assinatura digital
+  //     firstPage.drawText('Assinado Digitalmente - ICP-Brasil', {
+  //       x: position.x,
+  //       y: height - position.y - 20,
+  //       size: 10,
+  //       color: rgb(0.2, 0.2, 0.2)
+  //     });
+
+  //     // Adicionar retângulo para área de assinatura
+  //     firstPage.drawRectangle({
+  //       x: position.x,
+  //       y: height - position.y - position.height,
+  //       width: position.width,
+  //       height: position.height,
+  //       borderWidth: 1,
+  //       borderColor: rgb(0.5, 0.5, 0.5),
+  //       color: rgb(0.95, 0.95, 0.95)
+  //     });
+
+  //     const pdfBytes = await pdfDoc.save();
+  //     return Buffer.from(pdfBytes);
+  //   } catch (error) {
+  //     throw new Error(`Erro ao preparar PDF: ${error.message}`);
+  //   }
+  // }
+
+   async preparePDFForSignature(pdfBuffer, position) {
+        try {
+            const pdfDoc = await PDFDocument.load(pdfBuffer);
+            const pages = pdfDoc.getPages();
+
+            if (pages.length === 0) {
+                throw new Error('PDF não possui páginas');
+            }
+
+            const firstPage = pages[0];
+            const { height } = firstPage.getSize();
 
       // Adicionar texto indicativo de assinatura digital
       firstPage.drawText('Assinado Digitalmente - ICP-Brasil', {
-        x: position.x,
-        y: height - position.y - 20,
-        size: 10,
-        color: rgb(0.2, 0.2, 0.2)
+          x: position.x,
+          y: height - position.y - 20,
+          size: 10,
+          color: rgb(12 / 255, 255 / 255, 2 / 255) // Valores corrigidos para o formato 0-1
       });
 
       // Adicionar retângulo para área de assinatura
       firstPage.drawRectangle({
-        x: position.x,
-        y: height - position.y - position.height,
-        width: position.width,
-        height: position.height,
-        borderWidth: 1,
-        borderColor: rgb(0.5, 0.5, 0.5),
-        color: rgb(0.95, 0.95, 0.95)
+          x: position.x,
+          y: height - position.y - position.height,
+          width: position.width,
+          height: position.height,
+          borderWidth: 1,
+          borderColor: rgb(12 / 255, 11 / 255, 240 / 255), // Valores corrigidos para o formato 0-1
+          color: rgb(67 / 255, 0.95, 0.95) // Valor 67 corrigido
       });
-
-      const pdfBytes = await pdfDoc.save();
-      return Buffer.from(pdfBytes);
-    } catch (error) {
-      throw new Error(`Erro ao preparar PDF: ${error.message}`);
+            const pdfBytes = await pdfDoc.save();
+            return Buffer.from(pdfBytes);
+        } catch (error) {
+            throw new Error(`Erro ao preparar PDF: ${error.message}`);
+        }
     }
-  }
-
   /**
    * Verifica a assinatura de um PDF
    * @param {Buffer} pdfBuffer - Buffer do PDF assinado
